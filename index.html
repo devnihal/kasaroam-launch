@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kasaroam Launch - Synchronized Wave Fade</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background: black;
+      font-family: Arial, sans-serif;
+      position: relative;
+      height: 100vh;
+    }
+    /* Underlying site (iframe) */
+    iframe {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      border: none;
+      z-index: 0;
+    }
+    /* Grid overlay covering entire screen */
+    #gridOverlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      display: grid;
+      grid-template-columns: repeat(15, 1fr);
+      grid-template-rows: repeat(15, 1fr);
+      z-index: 2;
+    }
+    .grid-tile {
+      background: black;
+      transition: transform 1.5s ease, opacity 1.5s ease;
+    }
+    .grid-tile.fade-out {
+      opacity: 0;
+      transform: translateY(100px) scale(0.8);
+    }
+    /* Centered launch button */
+    .launch-button {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      padding: 15px 30px;
+      font-size: 1.5em;
+      background: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      z-index: 3;
+      transition: opacity 1s ease;
+      box-shadow: 0 0 15px rgba(76, 175, 80, 0.7);
+    }
+    /* Confetti canvas */
+    canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 4;
+      pointer-events: none;
+    }
+    @keyframes fadeOut {
+        0% { opacity: 1; }
+        100% { opacity: 0; }
+      }
+      /* Apply animation class to trigger fade out */
+    .fade-out {
+    animation: fadeOut 1s forwards;
+    }
+  </style>
+  <!-- Confetti library -->
+  <script src="https://cdn.jsdelivr.net/npm/confetti-js@0.0.18/dist/index.min.js"></script>
+</head>
+<body>
+  <!-- Underlying site -->
+  <iframe src="https://kasaroam.in"></iframe>
+  
+  <!-- Grid overlay -->
+  <div id="gridOverlay"></div>
+  
+  <!-- Centered launch button -->
+  <button class="launch-button" id="launchButton" onclick="startLaunch()">Launch 🚀</button>
+  
+  <!-- Confetti canvas -->
+  <canvas id="confetti-canvas"></canvas>
+  
+  <script>
+    // Create grid overlay (15x15 = 225 tiles)
+    const gridOverlay = document.getElementById("gridOverlay");
+    const cols = 15, rows = 15;
+    for (let i = 0; i < cols * rows; i++) {
+      const tile = document.createElement("div");
+      tile.className = "grid-tile";
+      gridOverlay.appendChild(tile);
+    }
+    
+    // Calculate center for Manhattan distance (0-indexed)
+    const centerRow = (rows - 1) / 2;
+    const centerCol = (cols - 1) / 2;
+    
+    let confetti;
+    function startLaunch() {
+      const button = document.getElementById("launchButton");
+      // Start fading out the button immediately (synchronized with grid animation)
+      button.classList.add("fade-out");
+      
+      // Also change the button text to a rocket emoji after a short delay (optional)
+      setTimeout(() => {
+        button.innerHTML = "🚀";
+      }, 200);
+      
+      // Remove button from view after fade-out
+      setTimeout(() => {
+        button.style.display = "none";
+      }, 1000);
+      
+      // Launch continuous confetti effect
+      launchConfetti();
+      
+      // For each grid tile, calculate delay based on Manhattan distance from center to create a wave effect
+      const tiles = document.querySelectorAll(".grid-tile");
+      tiles.forEach((tile, index) => {
+        const row = Math.floor(index / cols);
+        const col = index % cols;
+        const distance = Math.abs(row - centerRow) + Math.abs(col - centerCol);
+        const delay = distance * 100; // Adjust delay factor as needed
+        setTimeout(() => {
+          tile.classList.add("fade-out");
+        }, delay);
+      });
+      
+      // Fade out the confetti canvas gradually
+      setTimeout(() => {
+        const canvas = document.getElementById("confetti-canvas");
+        canvas.style.transition = "opacity 1s ease";
+        canvas.style.opacity = "0";
+      }, 2500);
+      
+      // Smooth redirect after all animations complete (approx 3.5 seconds)
+      setTimeout(() => {
+        window.location.href = "https://kasaroam.in";
+      }, 3000);
+    }
+    
+    function launchConfetti() {
+      confetti = new ConfettiGenerator({
+        target: "confetti-canvas",
+        max: 500,
+        size: 1,
+        animate: true,
+        props: ["circle", "square", "triangle"],
+        colors: [[255,0,0], [0,255,0], [0,0,255], [255,255,0]],
+        clock: 30,
+        rotate: true,
+        respawn:true,
+        start_from_edge:true,
+        spread:140
+      });
+      confetti.render();
+      // Let confetti run continuously; it will be faded out later.
+    }
+  </script>
+</body>
+</html>
