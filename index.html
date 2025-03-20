@@ -3,15 +3,16 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Kasaroam Launch</title>
+  <title>Kasaroam Launch with Morphing Progress Bar</title>
   <style>
-    body {
+    html, body {
       margin: 0;
+      padding: 0;
       overflow: hidden;
       background: black;
+      height: 100vh;
       font-family: Arial, sans-serif;
       position: relative;
-      height: 100vh;
     }
     /* Underlying site (iframe) */
     iframe {
@@ -23,7 +24,7 @@
       border: none;
       z-index: 0;
     }
-    /* Grid overlay covering entire screen */
+    /* Grid overlay (for later animation) */
     #gridOverlay {
       position: absolute;
       top: 0;
@@ -43,23 +44,6 @@
       opacity: 0;
       transform: translateY(100px) scale(0.8);
     }
-    /* Centered launch button */
-    .launch-button {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      padding: 15px 30px;
-      font-size: 1.5em;
-      background: #4CAF50;
-      color: white;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      z-index: 3;
-      transition: opacity 1s ease;
-      box-shadow: 0 0 15px rgba(76, 175, 80, 0.7);
-    }
     /* Confetti canvas */
     canvas {
       position: absolute;
@@ -70,17 +54,76 @@
       z-index: 4;
       pointer-events: none;
     }
-    @keyframes fadeOut {
-        0% { opacity: 1; }
-        100% { opacity: 0; }
+    /* Container for the progress bar (centered) */
+    #progressContainer {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 3;
+    }
+    /* Initial state: styled as a button */
+    .launch-progress {
+      background: transparent;
+      color: white;
+      padding: 15px 30px;
+      font-size: 1.5em;
+      border: 2px solid white;
+      border-radius: 8px;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.5s ease;
+      min-width: 300px;
+      position: relative;
+    }
+    /* When progressing, we want to morph into a narrow progress bar.
+       We'll use a keyframes animation to animate the morph.
+    */
+    @keyframes morphToBar {
+      0% {
+        padding: 15px 30px;
+        border-radius: 8px;
+        background-color: transparent;
+        color: white;
+        height: 25px;
       }
-      /* Apply animation class to trigger fade out */
-    .fade-out {
-    animation: fadeOut 1s forwards;
+      30%{
+        color: transparent;
+      }
+      100% {
+        padding: 5px 30px;
+        border-radius: 4px;
+        height: 5px;
+      }
+    }
+    .progressing {
+      animation: morphToBar 1s cubic-bezier(0.14, 0.91, 0.5, 0.99) forwards;
+      background: transparent; /* clear inner background */
+      color: transparent;  /* hide text */
+    }
+    /* The pseudo-element acts as the progress fill */
+    .launch-progress::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 100%;
+      width: 0%;
+      background: #4CAF50;
+      transition: width 5s linear;
+      z-index: -1;
+    }
+    /* Trigger the fill by adding the "fill" class */
+    .fill::after {
+      width: 100%;
+    }
+    .square{
+        aspect-ratio:1/1;
+        height: 10px;
+        width: 10px;
+        padding: 0;
     }
   </style>
-  <!-- Confetti library -->
-  <script src="https://cdn.jsdelivr.net/npm/confetti-js@0.0.18/dist/index.min.js"></script>
 </head>
 <body>
   <!-- Underlying site -->
@@ -89,12 +132,15 @@
   <!-- Grid overlay -->
   <div id="gridOverlay"></div>
   
-  <!-- Centered launch button -->
-  <button class="launch-button" id="launchButton" onclick="startLaunch()">Launch 🚀</button>
+  <!-- Progress container with launch progress div -->
+  <div id="progressContainer">
+    <div class="launch-progress" id="launchProgress" onclick="startProgress()">Launch 🚀</div>
+  </div>
   
   <!-- Confetti canvas -->
   <canvas id="confetti-canvas"></canvas>
   
+  <script src="https://cdn.jsdelivr.net/npm/confetti-js@0.0.18/dist/index.min.js"></script>
   <script>
     // Create grid overlay (15x15 = 225 tiles)
     const gridOverlay = document.getElementById("gridOverlay");
@@ -109,67 +155,78 @@
     const centerRow = (rows - 1) / 2;
     const centerCol = (cols - 1) / 2;
     
-    let confetti;
-    function startLaunch() {
-      const button = document.getElementById("launchButton");
-      // Start fading out the button immediately (synchronized with grid animation)
-      button.classList.add("fade-out");
+    function startProgress() {
+      const progressDiv = document.getElementById("launchProgress");
       
-      // Also change the button text to a rocket emoji after a short delay (optional)
+      // Start morphing the div into a progress bar:
+      progressDiv.classList.add("progressing");
+      // Erase text after morph starts
+      progressDiv.innerHTML = "Loading...";
+      // Trigger the progress fill via pseudo-element by adding "fill"
       setTimeout(() => {
-        button.innerHTML = "🚀";
-      }, 200);
+        progressDiv.classList.add("fill");
+    }, 400);
+    setTimeout(() => {
+        progressDiv.classList.add("sqaure");
+      }, 500);
       
-      // Remove button from view after fade-out
+      // After progress completes (5.5 seconds), trigger the launch animations.
       setTimeout(() => {
-        button.style.display = "none";
-      }, 1000);
+        startLaunchAnimation();
+      }, 5500);
+    }
+    
+    function startLaunchAnimation() {
+      const progressContainer = document.getElementById("progressContainer");
+      // Fade out the progress container
+      progressContainer.style.transition = "opacity 1s ease";
+      progressContainer.style.opacity = "0";
       
-      // Launch continuous confetti effect
+      // Launch confetti effect
       launchConfetti();
       
-      // For each grid tile, calculate delay based on Manhattan distance from center to create a wave effect
+      // Animate grid tiles in a wave based on Manhattan distance from center.
       const tiles = document.querySelectorAll(".grid-tile");
       tiles.forEach((tile, index) => {
         const row = Math.floor(index / cols);
         const col = index % cols;
         const distance = Math.abs(row - centerRow) + Math.abs(col - centerCol);
-        const delay = distance * 100; // Adjust delay factor as needed
+        const delay = distance * 100; // adjust delay as needed
         setTimeout(() => {
           tile.classList.add("fade-out");
         }, delay);
       });
       
-      // Fade out the confetti canvas gradually
+      // Fade out confetti canvas gradually after 3 seconds.
       setTimeout(() => {
         const canvas = document.getElementById("confetti-canvas");
         canvas.style.transition = "opacity 1s ease";
         canvas.style.opacity = "0";
       }, 2500);
       
-      // Smooth redirect after all animations complete (approx 3.5 seconds)
+      // Smooth redirect after all animations (approx 3.5 seconds)
       setTimeout(() => {
         window.location.href = "https://kasaroam.in";
-      }, 3000);
+      }, 3500);
     }
     
     function launchConfetti() {
-      confetti = new ConfettiGenerator({
-        target: "confetti-canvas",
-        max: 500,
-        size: 1,
-        animate: true,
-        props: ["circle", "square", "triangle"],
-        colors: [[255,0,0], [0,255,0], [0,0,255], [255,255,0]],
-        clock: 30,
-        rotate: true,
-        respawn:true,
-        start_from_edge:true,
-        spread:140
-      });
-      confetti.render();
-      // Let confetti run continuously; it will be faded out later.
-    }
+        confetti = new ConfettiGenerator({
+          target: "confetti-canvas",
+          max: 500,
+          size: 1,
+          animate: true,
+          props: ["circle", "square", "triangle"],
+          colors: [[255,0,0], [0,255,0], [0,0,255], [255,255,0]],
+          clock: 30,
+          rotate: true,
+          respawn:true,
+          start_from_edge:true,
+          spread:140
+        });
+        confetti.render();
+        // Let confetti run continuously; it will be faded out later.
+      }
   </script>
 </body>
 </html>
